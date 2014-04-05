@@ -114,9 +114,9 @@ getorders_bter <- function(){
     df <- mutate(df,
                  price = V1,
                  volume = V2,
-                 asset = str_split_fixed(pair,pattern='_',2)[1],
-                 unit = str_split_fixed(pair,pattern='_',2)[2]
                  )
+                 asset = toupper(str_split_fixed(pair,pattern='_',2)[1]),
+                 unit = toupper(str_split_fixed(pair,pattern='_',2)[2])
   })
   orders <- cleandf(orders)
   validateorders(orders)
