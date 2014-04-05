@@ -32,6 +32,24 @@ orders2igraph <- function(orders, buyfee=0, sellfee=0, exchangename = ''){
   V(resgraph)$name <- paste0(V(resgraph)$name, '_', exchangename)
   resgraph
 }
+
+validateorders <- function(orders){
+  by_market <- orders %.% group_by(interaction(asset, unit))
+  minsells <- by_market %.% filter(type=='sell') %.% summarise(minsell = min(price))
+  maxbuys <- by_market %.% filter(type=='buy') %.% summarise(maxbuy = max(price))
+  mktsummary <- inner_join(minsells, maxbuys, by='interaction(asset, unit)') %.% mutate(spread = minsell-maxbuy)
+  if(any(mktsummary$spread < 0)){
+    warning('minsell < maxbuy')
+  }
+  
+  mktsummary <- mktsummary %.% mutate(midprice = rowMeans(cbind(minsell,maxbuy)))
+  if(any(na.rm=TRUE,
+  mktsummary[match(c('DOGE.BTC','LTC.BTC'),mktsummary$`interaction(asset, unit)`),'midprice'] > 1,
+  mktsummary[match(c('BTC.DOGE','BTC.LTC'),mktsummary$`interaction(asset, unit)`),'midprice'] < 1
+  )){
+    warning('DOGE or LTC appears to be worth more than BTC')
+  }
+  return(orders)
 }
 
 cleandf <- function(dataframe){
@@ -70,6 +88,7 @@ getorders_cryptsy <- function(){
   
   ordersdf <- cleandf(ordersdf)
   ordersdf <- mutate(ordersdf, volume=total)
+  validateorders(ordersdf)
 }
 
 getorders_bter <- function(){
@@ -100,6 +119,7 @@ getorders_bter <- function(){
                  )
   })
   orders <- cleandf(orders)
+  validateorders(orders)
 }
 
 # getcryptsyorders_df <- function(){
