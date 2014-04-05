@@ -121,6 +121,23 @@ getorders_bter <- function(){
   validateorders(orders)
 }
 
+getorders_comkort <- function(){
+  allorders <- content(GET('https://api.comkort.com/v1/public/market/summary'))$markets
+  orders <- ldply(allorders, function(x){
+    df <- rbind_list(
+      data.frame(ldply(x$sell_orders,unlist),stringsAsFactors=FALSE),
+      data.frame(ldply(x$buy_orders,unlist),stringsAsFactors=FALSE)
+      )
+  })
+  orders <- cleandf(orders)
+  orders <- mutate(orders,
+                   asset = item,
+                   unit = price_currency,
+                   volume = total_price
+                   )
+  validateorders(orders)
+}
+
 getorders_bitrex <- function(){
   mkts_raw <- content(GET('https://bittrex.com/api/v1/public/getmarkets '))
   mkts <- ldply(mkts_raw$result,data.frame,stringsAsFactors=FALSE)
