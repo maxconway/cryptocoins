@@ -99,13 +99,12 @@ getorders_bter <- function(){
       Sys.sleep(10)
       resp <- GET(url=paste0('http://data.bter.com/api/1/depth/',pair))
     }
-    print(resp)
     depth <- content(resp)
     df <- rbind(
       data.frame(stringsAsFactors=FALSE,
                  type=rep('sell',length(depth$asks)),
                  ldply(depth$asks,unlist)
-                 ),
+      ),
       data.frame(stringsAsFactors=FALSE,
                  type=rep('buy',length(depth$bids)),
                  ldply(depth$bids,unlist)
@@ -114,36 +113,11 @@ getorders_bter <- function(){
     df <- mutate(df,
                  price = V1,
                  volume = V2,
-                 )
                  asset = toupper(str_split_fixed(pair,pattern='_',2)[1]),
                  unit = toupper(str_split_fixed(pair,pattern='_',2)[2])
+    )
   })
   orders <- cleandf(orders)
   validateorders(orders)
 }
 
-# getcryptsyorders_df <- function(){
-#   result <- content(GET('http://pubapi.cryptsy.com/api.php?method=orderdatav2'), as='parsed')
-#   if(result$success!=1){stop('retrieval failed')}
-#   
-#   cryptsydf <- ldply(result[['return']], function(market){
-#     rbind(
-#       ldply(market$buyorders, function(x){data.frame(stringsAsFactors=FALSE,
-#                                                      from = market$secondarycode,
-#                                                      to = market$primarycode,
-#                                                      rate = as.numeric(x$price)*0.98,
-#                                                      volume = as.numeric(x$total)
-#       )}),
-#       ldply(market$sellorders, function(x){data.frame(stringsAsFactors=FALSE,
-#                                                       from = market$primarycode,
-#                                                       to = market$secondarycode,
-#                                                       rate = 1/as.numeric(x$price)*0.97,
-#                                                       volume = as.numeric(x$quantity)
-#       )})
-#     )
-#   })[,-1]
-#   
-#   #cryptsydf$retrivaltime <- now('GMT')
-#   
-#   return(cryptsydf)
-# }
