@@ -3,6 +3,7 @@ library(dplyr)
 library(httr)
 library(lubridate)
 library(stringr)
+library(igraph)
 
 #' converts from a a data frame of orders to an igraph
 #' 
@@ -13,20 +14,24 @@ library(stringr)
 #'  \item{\code{volume}} the amount available to buy, in \code{units}
 #'  \item{\code{type}} buy or sell
 #' }
-orders2igraph <- function(orders, buyfee=0, sellfee=0){
+orders2igraph <- function(orders, buyfee=0, sellfee=0, exchangename = ''){
+  # note: a buy order represents and opportunity to sell, and vice versa
   buys <- plyr::summarise(orders[orders$type=='buy',],
-                    from = unit,
-                    to = asset,
-                    rate = price*(1-buyfee),
-                    volume = volume
+                          from = asset,
+                          to = unit,
+                          rate = price*(1-sellfee),
+                          volume = volume
   )
   sells <- plyr::summarise(orders[orders$type=='sell',],
-                    from = asset,
-                    to = unit,
-                    rate = 1/price*(1-sellfee),
-                    volume = volume/price
+                           from = unit,
+                           to = asset,
+                           rate = 1/price*(1-buyfee),
+                           volume = volume/price
   )
-  resgraph <- graph.data.frame(rbind.fill(buys,sells))
+  resgraph <- graph.data.frame(rbind.fill(buys,sells), directed=TRUE)
+  V(resgraph)$name <- paste0(V(resgraph)$name, '_', exchangename)
+  resgraph
+}
 }
 
 cleandf <- function(dataframe){
