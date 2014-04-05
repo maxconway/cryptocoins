@@ -121,3 +121,38 @@ getorders_bter <- function(){
   validateorders(orders)
 }
 
+getorders_bitrex <- function(){
+  mkts_raw <- content(GET('https://bittrex.com/api/v1/public/getmarkets '))
+  mkts <- ldply(mkts_raw$result,data.frame,stringsAsFactors=FALSE)
+  orders <- ldply(mkts[mkts$IsActive,'MarketName'], function(mkt){
+    url <- modify_url(url='https://bittrex.com/api/v1/public/getorderbook',
+                      query=paste(sep='=',collapse='&',
+                                  c('type','depth','market'),
+                                  c('both','100',mkt)
+                                  )
+                      )
+    failures <- 0
+    succ=FALSE
+    while(!succ){
+      Sys.sleep(runif(1,0,2^failures-1))
+      resp <- GET(url)
+      try({succ <- content(resp)$success})
+      failures <- failures+1
+    }
+    depth <- content(resp)$result
+    buyorders <- ldply(depth$buy,data.frame,stringsAsFactors=FALSE)
+    sellorders <- ldply(depth$sell,data.frame,stringsAsFactors=FALSE)
+    buyorders$type <- rep_len('buy',nrow(buyorders))
+    sellorders$type <- rep_len('sell',nrow(sellorders))
+    mktorders <- rbind_list(buyorders,sellorders)
+    mktorders$unit <- rep_len(mkts[mkts$MarketName==mkt,'BaseCurrency'],nrow(mktorders))
+    mktorders$asset <- rep_len(mkts[mkts$MarketName==mkt,'MarketCurrency'],nrow(mktorders))
+    return(mktorders)
+  })
+  orders <- mutate(orders,
+                   price = Rate,
+                   volume = Quantity
+                   )
+  orders <- cleandf(orders)
+  validateorders(orders)
+}
