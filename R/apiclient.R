@@ -71,15 +71,15 @@ getorders_cryptsy <- function(){
   
   ordersdf <- ldply(result[['return']], with,
                     data.frame(stringsAsFactors=FALSE,
-                               unit=secondarycode,
-                               asset=primarycode,
+                               unit=rep(secondarycode, length(buyorders)+length(sellorders)),
+                               asset=rep(primarycode, length(buyorders)+length(sellorders)),
                                rbind(
                                  data.frame(stringsAsFactors=FALSE,
-                                            type='buy',
-                                            ldply(sellorders,data.frame,stringsAsFactors=FALSE)
+                                            type=rep('buy',length(buyorders)),
+                                            ldply(buyorders,data.frame,stringsAsFactors=FALSE)
                                  ),
                                  data.frame(stringsAsFactors=FALSE,
-                                            type='sell',
+                                            type=rep('sell',length(sellorders)),
                                             ldply(sellorders,data.frame,stringsAsFactors=FALSE)
                                  )
                                )
@@ -103,11 +103,11 @@ getorders_bter <- function(){
     depth <- content(resp)
     df <- rbind(
       data.frame(stringsAsFactors=FALSE,
-                 type='sell',
+                 type=rep('sell',length(depth$asks)),
                  ldply(depth$asks,unlist)
                  ),
       data.frame(stringsAsFactors=FALSE,
-                 type='buy',
+                 type=rep('buy',length(depth$bids)),
                  ldply(depth$bids,unlist)
       )
     )
