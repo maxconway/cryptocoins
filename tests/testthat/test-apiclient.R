@@ -11,8 +11,8 @@ orders <- data.frame(
 test_that('orders2igraph produces expected results', {
   graph <- orders2igraph(orders)
   
-  expect_that(graph['B','C',attr='rate'], equals(1.1))
-  expect_that(graph['C','B',attr='rate'], equals(1/0.9))
+  expect_that(graph['B','C',attr='rate'], equals(0.9))
+  expect_that(graph['C','B',attr='rate'], equals(1/1.1))
 })
 
 test_that('orders2igraph fees work correctly', {

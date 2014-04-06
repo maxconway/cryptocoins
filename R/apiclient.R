@@ -14,7 +14,7 @@ library(igraph)
 #'  \item{\code{volume}} the amount available to buy, in \code{units}
 #'  \item{\code{type}} buy or sell
 #' }
-orders2igraph <- function(orders, buyfee=0, sellfee=0, exchangename = ''){
+orders2igraph <- function(orders, buyfee=0, sellfee=0, exchangename = NULL){
   # note: a buy order represents and opportunity to sell, and vice versa
   buys <- plyr::summarise(orders[orders$type=='buy',],
                           from = asset,
@@ -29,7 +29,9 @@ orders2igraph <- function(orders, buyfee=0, sellfee=0, exchangename = ''){
                            volume = volume/price
   )
   resgraph <- graph.data.frame(rbind.fill(buys,sells), directed=TRUE)
-  V(resgraph)$name <- paste0(V(resgraph)$name, '_', exchangename)
+  if(!is.null(exchangename)){
+    V(resgraph)$name <- paste(V(resgraph)$name, sep='_', exchangename)
+  }
   resgraph
 }
 
