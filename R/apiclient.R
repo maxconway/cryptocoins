@@ -16,24 +16,20 @@ library(igraph)
 #' }
 orders2igraph <- function(orders, buyfee=0, sellfee=0, exchangename = NULL){
   # note: a buy order represents and opportunity to sell, and vice versa
-  buys <- plyr::summarise(orders[orders$type=='buy',],
+  buys <- dplyr::mutate(orders[orders$type=='buy',],
                           from = asset,
                           to = unit,
-                          rate = price*(100-sellfee)/100,
+                          rate = price*(1-0.01*sellfee),
                           volume = volume,
-                          type = 'buy',
-                          myaction = 'sell',
-                          price = price
-  )
-  sells <- plyr::summarise(orders[orders$type=='sell',],
+                          type = 'buy'
+  ) %.% select(from,to,rate,volume,type)
+  sells <- dplyr::mutate(orders[orders$type=='sell',],
                            from = unit,
                            to = asset,
-                           rate = 1/price*(100-buyfee)/100,
+                           rate = (1/price)*(1-0.01*buyfee),
                            volume = volume/price,
-                           type = 'sell',
-                           myaction = 'buy',
-                           price = price
-  )
+                           type = 'sell'
+  ) %.% select(from,to,rate,volume,type)
   resgraph <- graph.data.frame(rbind.fill(buys,sells), directed=TRUE)
   if(!is.null(exchangename)){
     V(resgraph)$name <- paste(V(resgraph)$name, sep='_', exchangename)
@@ -47,15 +43,15 @@ validateorders <- function(orders){
   maxbuys <- by_market %.% filter(type=='buy') %.% summarise(maxbuy = max(price))
   mktsummary <- inner_join(minsells, maxbuys, by='interaction(asset, unit)') %.% mutate(spread = minsell-maxbuy)
   if(any(mktsummary$spread < 0)){
-    warning('minsell < maxbuy')
+    stop('minsell < maxbuy')
   }
   
   mktsummary <- mktsummary %.% mutate(midprice = rowMeans(cbind(minsell,maxbuy)))
   if(any(na.rm=TRUE,
-  mktsummary[match(c('DOGE.BTC','LTC.BTC'),mktsummary$`interaction(asset, unit)`),'midprice'] > 1,
-  mktsummary[match(c('BTC.DOGE','BTC.LTC'),mktsummary$`interaction(asset, unit)`),'midprice'] < 1
+         mktsummary[match(c('DOGE.BTC','LTC.BTC'),mktsummary$`interaction(asset, unit)`),'midprice'] > 1,
+         mktsummary[match(c('BTC.DOGE','BTC.LTC'),mktsummary$`interaction(asset, unit)`),'midprice'] < 1
   )){
-    warning('DOGE or LTC appears to be worth more than BTC')
+    stop('DOGE or LTC appears to be worth more than BTC')
   }
   return(orders)
 }
@@ -135,14 +131,14 @@ getorders_comkort <- function(){
     df <- rbind_list(
       data.frame(ldply(x$sell_orders,unlist),stringsAsFactors=FALSE),
       data.frame(ldply(x$buy_orders,unlist),stringsAsFactors=FALSE)
-      )
+    )
   })
   orders <- cleandf(orders)
   orders <- mutate(orders,
                    asset = item,
                    unit = price_currency,
                    volume = total_price
-                   )
+  )
   validateorders(orders)
 }
 
@@ -154,8 +150,8 @@ getorders_bitrex <- function(){
                       query=paste(sep='=',collapse='&',
                                   c('type','depth','market'),
                                   c('both','100',mkt)
-                                  )
                       )
+    )
     failures <- 0
     succ=FALSE
     while(!succ){
@@ -177,7 +173,7 @@ getorders_bitrex <- function(){
   orders <- mutate(orders,
                    price = Rate,
                    volume = Quantity
-                   )
+  )
   orders <- cleandf(orders)
   validateorders(orders)
 }
