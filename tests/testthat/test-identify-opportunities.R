@@ -1,4 +1,4 @@
-context('test exploitloops')
+context('test opportunity identification')
 
 test_that('augmentgraph works',{
   before <- graph.formula(A)
