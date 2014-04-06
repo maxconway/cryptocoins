@@ -20,13 +20,19 @@ orders2igraph <- function(orders, buyfee=0, sellfee=0, exchangename = NULL){
                           from = asset,
                           to = unit,
                           rate = price*(100-sellfee)/100,
-                          volume = volume
+                          volume = volume,
+                          type = 'buy',
+                          myaction = 'sell',
+                          price = price
   )
   sells <- plyr::summarise(orders[orders$type=='sell',],
                            from = unit,
                            to = asset,
                            rate = 1/price*(100-buyfee)/100,
-                           volume = volume/price
+                           volume = volume/price,
+                           type = 'sell',
+                           myaction = 'buy',
+                           price = price
   )
   resgraph <- graph.data.frame(rbind.fill(buys,sells), directed=TRUE)
   if(!is.null(exchangename)){
