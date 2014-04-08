@@ -5,27 +5,54 @@ if(file.exists('./dev/logs/ordershistory.RData')){
 while(TRUE){
   try({
     pulltime <- now()
-#     orders_bter <- getorders_bter()
-#     graph_bter <- orders2igraph(orders_bter,0.2,0.2,exchangename='bter')
+    markets <- NULL
+    orderslist <- list()
+    graphs <- list()
     
-    orders_comkort <- getorders_comkort()
-    graph_comkort <- orders2igraph(orders_comkort,0.2,0.2,exchangename='comkort')
+    try({
+    orders_bter <- getorders_bter() %.% mutate(exchange = 'bter')
+    graph_bter <- orders2igraph(orders_bter,0.2,0.2,exchangename='bter')
+    markets <- c(markets, 'bter')
+    orderslist$bter <- orders_bter
+    graphs$bter <- graph_bter
+    })
     
-    orders_cryptsy <- getorders_cryptsy()
-    graph_cryptsy <- orders2igraph(orders_cryptsy,0.2,0.3,exchangename='cryptsy')
+    try({
+      orders_comkort <- getorders_comkort() %.% mutate(exchange = 'comkort')
+      graph_comkort <- orders2igraph(orders_comkort,0.2,0.2,exchangename='comkort')
+      markets <- c(markets, 'comkort')
+      orderslist$comkort <- orders_comkort
+      graphs$comkort <- graph_comkort
+    })
     
-    orders_bitrex <- getorders_bitrex()
-    graph_bitrex <- orders2igraph(orders_bitrex,exchangename='bitrex')
+    try({
+      orders_cryptsy <- getorders_cryptsy() %.% mutate(exchange = 'cryptsy')
+      graph_cryptsy <- orders2igraph(orders_cryptsy,0.2,0.3,exchangename='cryptsy')
+      markets <- c(markets, 'cryptsy')
+      orderslist$cryptsy <- orders_cryptsy
+      graphs$cryptsy <- graph_cryptsy
+    })
     
-    orders_coinse <- getorders_coinse()
-    graph_coinse <- orders2igraph(orders_coinse,0.2,0.2,exchangename='coinse')
+    try({
+      orders_bitrex <- getorders_bitrex() %.% mutate(exchange = 'bitrex')
+      graph_bitrex <- orders2igraph(orders_bitrex,exchangename='bitrex')
+      markets <- c(markets, 'bitrex')
+      orderslist$bitrex <- orders_bitrex
+      graphs$bitrex <- graph_bitrex
+    })
     
-    gr2 <- graph_cryptsy %du% graph_comkort %du% graph_bitrex %du% graph_coinse #%du% graph_bter
+    try({
+      orders_coinse <- getorders_coinse() %.% mutate(exchange = 'coinse')
+      graph_coinse <- orders2igraph(orders_coinse,0.2,0.2,exchangename='coinse')
+      markets <- c(markets, 'coinse')
+      orderslist$coinse <- orders_coinse
+      graphs$coinse <- graph_coinse
+    })
+    
+    gr2 <- graph.disjoint.union(graphs)
     
     gr2 <- gr2 + vertices(c('BTC_wallet','LTC_wallet','DOGE_wallet'))
-    
-    markets <- c('comkort','cryptsy','bitrex','coinse')#,'bter')
-    
+        
     for(currency in c('BTC','LTC','DOGE')){
       gr2[from=rep_len(paste(sep='_',currency,'wallet'), length(markets)), to=paste(sep='_', currency, markets), attr='rate'] <- 1
       gr2[from=rep_len(paste(sep='_',currency,'wallet'), length(markets)), to=paste(sep='_', currency, markets), attr='volume'] <- Inf
@@ -38,7 +65,7 @@ while(TRUE){
       sendmail('conway.max1@gmail.com',
                subject=paste('Arbitrage opportunity for',format(res$optimum,digits=3),'BTC'),
                message=paste("Hi Max, you have found an arbitrage opportunity for",format(res$optimum,digits=3),'BTC.')
-               )
+      )
     }
     
     write.table(data.frame(pulltime,res$optimum),
@@ -49,12 +76,7 @@ while(TRUE){
                 sep='\t'
     )
     
-    currentorders <- list(#mutate(orders_bter, exchange = 'bter'),
-                      mutate(orders_comkort, exchange = 'comkort'),
-                      mutate(orders_cryptsy, exchange = 'cryptsy'),
-                      mutate(orders_bitrex, exchange = 'bittrex'),
-                      mutate(orders_coinse, exchange = 'coinse')
-    ) %.% ldply(select, exchange, asset, unit, type, price, volume) %.% 
+    currentorders <- orderslist %.% ldply(select, exchange, asset, unit, type, price, volume) %.% 
       mutate(pulled = pulltime)
     
     if(exists('historicalorders')){
