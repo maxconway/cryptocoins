@@ -17,18 +17,18 @@ library(igraph)
 orders2igraph <- function(orders, buyfee=0, sellfee=0, exchangename = NULL){
   # note: a buy order represents and opportunity to sell, and vice versa
   buys <- dplyr::mutate(orders[orders$type=='buy',],
-                          from = asset,
-                          to = unit,
-                          rate = price*(1-0.01*sellfee),
-                          volume = volume,
-                          type = 'buy'
+                        from = asset,
+                        to = unit,
+                        rate = price*(1-0.01*sellfee),
+                        volume = volume,
+                        type = 'buy'
   ) %.% select(from,to,rate,volume,type)
   sells <- dplyr::mutate(orders[orders$type=='sell',],
-                           from = unit,
-                           to = asset,
-                           rate = (1/price)*(1-0.01*buyfee),
-                           volume = volume/price,
-                           type = 'sell'
+                         from = unit,
+                         to = asset,
+                         rate = (1/price)*(1-0.01*buyfee),
+                         volume = volume/price,
+                         type = 'sell'
   ) %.% select(from,to,rate,volume,type)
   resgraph <- graph.data.frame(rbind.fill(buys,sells), directed=TRUE)
   if(!is.null(exchangename)){
@@ -175,5 +175,40 @@ getorders_bitrex <- function(){
                    volume = Quantity
   )
   orders <- cleandf(orders)
+  validateorders(orders)
+}
+
+getorders_coinse <- function(){
+  response <- content(GET("https://www.coins-e.com/api/v2/markets/data/"))
+  if(!response$status){
+    stop('retrieval failed')
+  }
+  markets <- response$markets
+  orders <- ldply(markets, function(mkt){
+    if(mkt$status!='healthy'){
+      return()
+    }
+    data.frame(stringsAsFactors=FALSE,
+               unit = mkt$c2,
+               asset = mkt$c1,
+               depth = rbind_list(
+                 data.frame( stringsAsFactors=FALSE,
+                             type=rep_len('buy',length(mkt$marketdepth$bids)),
+                             ldply(mkt$marketdepth$bids, unlist)
+                 ),
+                 data.frame(stringsAsFactors=FALSE,
+                            type=rep_len('sell',length(mkt$marketdepth$asks)),
+                            ldply(mkt$marketdepth$asks, unlist))
+               )
+    )
+  })
+  orders <- cleandf(orders)
+  orders <- orders[rep(1:nrow(orders), times=orders$depth.n),] %.% 
+    mutate(unit = unit,
+           asset = asset,
+           type = depth.type,
+           price = depth.r,
+           volume = depth.q*depth.r
+    )
   validateorders(orders)
 }

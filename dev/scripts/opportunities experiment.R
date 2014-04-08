@@ -1,7 +1,7 @@
 while(TRUE){
   try({
-    orders_bter <- getorders_bter()
-    graph_bter <- orders2igraph(orders_bter,0.2,0.2,exchangename='bter')
+#     orders_bter <- getorders_bter()
+#     graph_bter <- orders2igraph(orders_bter,0.2,0.2,exchangename='bter')
     
     orders_comkort <- getorders_comkort()
     graph_comkort <- orders2igraph(orders_comkort,0.2,0.2,exchangename='comkort')
@@ -12,11 +12,13 @@ while(TRUE){
     orders_bitrex <- getorders_bitrex()
     graph_bitrex <- orders2igraph(orders_bitrex,exchangename='bitrex')
     
-    gr2 <- graph_bter %du% graph_cryptsy %du% graph_comkort %du% graph_bitrex
+    orders_coinse <- getorders_coinse()
+    graph_coinse <- orders2igraph(orders_coinse,0.2,0.2,exchangename='coinse')
     
+    gr2 <- graph_cryptsy %du% graph_comkort %du% graph_bitrex %du% graph_coinse #%du% graph_bter
     gr2 <- gr2 + vertices(c('BTC_wallet','LTC_wallet','DOGE_wallet'))
     
-    markets <- c('bter','comkort','cryptsy','bitrex')
+    markets <- c('comkort','cryptsy','bitrex','coinse')#,'bter')
     
     for(currency in c('BTC','LTC','DOGE')){
       gr2[from=rep_len(paste(sep='_',currency,'wallet'), length(markets)), to=paste(sep='_', currency, markets), attr='rate'] <- 1
