@@ -1,5 +1,10 @@
+if(file.exists('./dev/logs/ordershistory.RData')){
+  load('./dev/logs/ordershistory.RData')
+}
+
 while(TRUE){
   try({
+    pulltime <- now()
 #     orders_bter <- getorders_bter()
 #     graph_bter <- orders2igraph(orders_bter,0.2,0.2,exchangename='bter')
     
@@ -16,6 +21,7 @@ while(TRUE){
     graph_coinse <- orders2igraph(orders_coinse,0.2,0.2,exchangename='coinse')
     
     gr2 <- graph_cryptsy %du% graph_comkort %du% graph_bitrex %du% graph_coinse #%du% graph_bter
+    
     gr2 <- gr2 + vertices(c('BTC_wallet','LTC_wallet','DOGE_wallet'))
     
     markets <- c('comkort','cryptsy','bitrex','coinse')#,'bter')
@@ -28,14 +34,38 @@ while(TRUE){
     }
     
     res <- optimize(augmentgraph(gr2,vertex='BTC_wallet'))
+    if(res$optimum>1){
+      sendmail('conway.max1@gmail.com',
+               subject=paste('Arbitrage opportunity for',format(res$optimum,digits=3),'BTC'),
+               message=paste("Hi Max, you have found an arbitrage opportunity for",format(res$optimum,digits=3),'BTC.')
+               )
+    }
     
-    write.table(data.frame(now(),res$optimum),
+    write.table(data.frame(pulltime,res$optimum),
                 file='./dev/logs/opportunities.txt',
                 append=TRUE,
                 col.names=FALSE,
                 row.names=FALSE,
                 sep='\t'
     )
+    
+    currentorders <- list(#mutate(orders_bter, exchange = 'bter'),
+                      mutate(orders_comkort, exchange = 'comkort'),
+                      mutate(orders_cryptsy, exchange = 'cryptsy'),
+                      mutate(orders_bitrex, exchange = 'bittrex'),
+                      mutate(orders_coinse, exchange = 'coinse')
+    ) %.% ldply(select, exchange, asset, unit, type, price, volume) %.% 
+      mutate(pulled = pulltime)
+    
+    if(exists('historicalorders')){
+      historicalorders <- rbind.fill(historicalorders, currentorders)
+    }else{
+      historicalorders <- currentorders
+    }
+    
+    save(historicalorders, file='./dev/logs/ordershistory_temp.RData')
+    file.rename('./dev/logs/ordershistory_temp.RData',
+                './dev/logs/ordershistory.RData')
   })
 }
 
