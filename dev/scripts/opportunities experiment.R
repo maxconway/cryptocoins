@@ -1,6 +1,6 @@
-if(file.exists('./dev/logs/ordershistory.RData')){
-  load('./dev/logs/ordershistory.RData')
-}
+# if(file.exists('./dev/logs/ordershistory.RData')){
+#   load('./dev/logs/ordershistory.RData')
+# }
 
 while(TRUE){
   try({
@@ -79,15 +79,18 @@ while(TRUE){
     currentorders <- orderslist %.% ldply(select, exchange, asset, unit, type, price, volume) %.% 
       mutate(pulled = pulltime)
     
-    if(exists('historicalorders')){
-      historicalorders <- rbind.fill(historicalorders, currentorders)
-    }else{
-      historicalorders <- currentorders
-    }
-    
-    save(historicalorders, file='./dev/logs/ordershistory_temp.RData')
-    file.rename('./dev/logs/ordershistory_temp.RData',
-                './dev/logs/ordershistory.RData')
+#     if(exists('historicalorders')){
+#       historicalorders <- rbind.fill(historicalorders, currentorders)
+#     }else{
+#       historicalorders <- currentorders
+#     }
+#     
+#     try({
+#     save(historicalorders, file='./dev/logs/ordershistory_temp.RData')
+#     file.rename('./dev/logs/ordershistory_temp.RData',
+#                 './dev/logs/ordershistory.RData')
+#     })
+    gc()
   })
 }
 
