@@ -70,7 +70,7 @@ cleandf <- function(dataframe){
 }
 
 getorders_cryptsy <- function(){
-  result <- content(GET(handle=handle('http://pubapi.cryptsy.com/api.php?method=orderdatav2')), as='parsed')
+  result <- content(GET('http://pubapi.cryptsy.com/api.php?method=orderdatav2'), as='parsed')
   if(result$success!=1){stop('retrieval failed')}
   
   ordersdf <- ldply(result[['return']], with,
@@ -96,21 +96,12 @@ getorders_cryptsy <- function(){
 }
 
 getorders_bter <- function(){
-  pairs <- content(GET(handle=handle('http://data.bter.com/api/1/pairs')))
+  pairs <- content(GET('http://data.bter.com/api/1/pairs'))
   orders <- ldply(pairs, function(pair){
-    handle <- handle(paste0('http://data.bter.com/api/1/depth/',pair))
-    failures <- 0
-    succ=FALSE
-    while(!succ){
-      Sys.sleep(runif(1,0,2^failures-1))
-      try({
-        resp <- GET(handle=handle)
-        succ <- resp$headers[['content-type']]=='application/json'
-      })
-      failures <- failures+1
-      if(failures>4){
-        stop('bter retrieval failed')
-      }
+    resp <- GET(url=paste0('http://data.bter.com/api/1/depth/',pair))
+    if(resp$headers[['content-type']]!='application/json'){
+      Sys.sleep(10)
+      resp <- GET(url=paste0('http://data.bter.com/api/1/depth/',pair))
     }
     depth <- content(resp)
     df <- rbind(
@@ -135,7 +126,7 @@ getorders_bter <- function(){
 }
 
 getorders_comkort <- function(){
-  allorders <- content(GET(handle=handle('https://api.comkort.com/v1/public/market/summary')))$markets
+  allorders <- content(GET('https://api.comkort.com/v1/public/market/summary'))$markets
   orders <- ldply(allorders, function(x){
     df <- rbind_list(
       data.frame(ldply(x$sell_orders,unlist),stringsAsFactors=FALSE),
@@ -152,7 +143,7 @@ getorders_comkort <- function(){
 }
 
 getorders_bitrex <- function(){
-  mkts_raw <- content(GET(handle=handle('https://bittrex.com/api/v1/public/getmarkets ')))
+  mkts_raw <- content(GET('https://bittrex.com/api/v1/public/getmarkets '))
   mkts <- ldply(mkts_raw$result,data.frame,stringsAsFactors=FALSE)
   orders <- ldply(mkts[mkts$IsActive,'MarketName'], function(mkt){
     url <- modify_url(url='https://bittrex.com/api/v1/public/getorderbook',
@@ -188,7 +179,7 @@ getorders_bitrex <- function(){
 }
 
 getorders_coinse <- function(){
-  response <- content(GET(handle=handle("https://www.coins-e.com/api/v2/markets/data/")))
+  response <- content(GET("https://www.coins-e.com/api/v2/markets/data/"))
   if(!response$status){
     stop('retrieval failed')
   }
