@@ -29,7 +29,7 @@ orders2igraph <- function(orders, buyfee=0, sellfee=0, exchangename = NULL){
                          from = unit,
                          to = asset,
                          rate = (1/price)*(1-0.01*buyfee),
-                         volume = volume/price,
+                         volume = volume*price,
                          type = 'sell'
   ) %.% select(from,to,rate,volume,type)
   resgraph <- graph.data.frame(rbind.fill(buys,sells), directed=TRUE)
@@ -137,7 +137,7 @@ getorders_comkort <- function(){
   orders <- mutate(orders,
                    asset = item,
                    unit = price_currency,
-                   volume = asset
+                   volume = amount
   )
   validateorders(orders)
 }
@@ -204,7 +204,7 @@ getorders_coinse <- function(){
            asset = asset,
            type = depth.type,
            price = depth.r,
-           volume = depth.q*depth.r
+           volume = depth.q
     )
   validateorders(orders)
 }
