@@ -39,6 +39,27 @@ orders2igraph <- function(orders, buyfee=0, sellfee=0, exchangename = NULL){
   resgraph
 }
 
+igraph2orders <- function(graph){
+  orders <- get.data.frame(graph)
+  buys <- orders %.%
+    filter(type=='buy') %.%
+    mutate(asset = from,
+           unit = to,
+           price = rate,
+           volume = volume
+           ) %.%
+    select(asset, unit, type, price, volume)
+  sells <- orders %.%
+    filter(type=='sell') %.%
+    mutate(unit=from,
+           asset = to,
+           price = 1/rate,
+           volume = volume * rate) %.% 
+    select(asset, unit, type, price, volume)
+  rbind.fill(buys,sells) %.% 
+    arrange(unit,asset,price)
+}
+
 validateorders <- function(orders){
   by_market <- orders %.% group_by(interaction(asset, unit))
   minsells <- by_market %.% filter(type=='sell') %.% summarise(minsell = min(price))
@@ -99,7 +120,7 @@ getorders_cryptsy <- function(){
 
 getorders_bter <- function(){
   pairs <- fromJSON(getURL('http://data.bter.com/api/1/pairs'))
-  resps_markets <- getURLAsynchronous(paste0('http://data.bter.com/api/1/depth/',pairs))
+  resps_markets <- getURL(paste0('http://data.bter.com/api/1/depth/',pairs),async=FALSE)
   names(resps_markets) <- pairs
   orders <- ldply(pairs, function(pair){
     depth <- fromJSON(resps_markets[[pair]])

@@ -23,6 +23,22 @@ test_that('orders2igraph: fees work correctly', {
   expect_that(min(E(graph_free)$rate - E(graph_fee)$rate), is_more_than(0))
 })
 
+test_that('igraph2orders reverses orders2igraph', {
+  load(file='tests/testthat/exampleorders.RData')
+  expected <- testorders
+  expected <- expected[order(expected$unit,expected$asset,expected$type,expected$price,expected$volume),c('asset','unit','type','price','volume')]
+  sample <- igraph2orders(orders2igraph(testorders))
+  sample <- sample[order(sample$unit,sample$asset,sample$type,sample$price,sample$volume),c('asset','unit','type','price','volume')]
+  
+  expect_that(nrow(sample), equals(nrow(expected)))
+  
+  expect_that(sample$asset, equals(expected$asset))
+  expect_that(sample$unit, equals(expected$unit))
+  expect_that(sample$type, equals(expected$type))
+  expect_that(sample$price, equals(expected$price))
+  expect_that(sample$volume, equals(expected$volume))
+})
+
 
 context('validation')
 #####################
