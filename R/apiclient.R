@@ -11,7 +11,7 @@ library(igraph)
 #'  \item{\code{asset}} first part of trading pair
 #'  \item{\code{units}} second part of trading pair
 #'  \item{\code{price}} the price of the \code{asset}, in \code{units}
-#'  \item{\code{volume}} the amount available to buy, in \code{units}
+#'  \item{\code{volume}} the amount available to buy, in \code{asset}
 #'  \item{\code{type}} buy or sell
 #' }
 orders2igraph <- function(orders, buyfee=0, sellfee=0, exchangename = NULL){
@@ -91,7 +91,7 @@ getorders_cryptsy <- function(){
   )
   
   ordersdf <- cleandf(ordersdf)
-  ordersdf <- mutate(ordersdf, volume=total)
+  ordersdf <- mutate(ordersdf, volume=quantity)
   validateorders(ordersdf)
 }
 
@@ -137,7 +137,7 @@ getorders_comkort <- function(){
   orders <- mutate(orders,
                    asset = item,
                    unit = price_currency,
-                   volume = total_price
+                   volume = asset
   )
   validateorders(orders)
 }
