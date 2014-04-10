@@ -1,5 +1,7 @@
 library(plyr)
 library(dplyr)
+library(RCurl)
+library(jsonlite)
 library(httr)
 library(lubridate)
 library(stringr)
@@ -96,30 +98,28 @@ getorders_cryptsy <- function(){
 }
 
 getorders_bter <- function(){
-  pairs <- content(GET('http://data.bter.com/api/1/pairs'))
+  pairs <- fromJSON(getURL('http://data.bter.com/api/1/pairs'))
+  resps_markets <- getURLAsynchronous(paste0('http://data.bter.com/api/1/depth/',pairs))
+  names(resps_markets) <- pairs
   orders <- ldply(pairs, function(pair){
-    resp <- GET(url=paste0('http://data.bter.com/api/1/depth/',pair))
-    if(resp$headers[['content-type']]!='application/json'){
-      Sys.sleep(10)
-      resp <- GET(url=paste0('http://data.bter.com/api/1/depth/',pair))
-    }
-    depth <- content(resp)
+    depth <- fromJSON(resps_markets[[pair]])
+    mode(depth$asks) <- 'numeric'
+    mode(depth$bids) <- 'numeric'
     df <- rbind(
       data.frame(stringsAsFactors=FALSE,
                  type=rep('sell',length(depth$asks)),
-                 ldply(depth$asks,unlist)
+                 as.data.frame(depth$asks,stringsAsFactors=FALSE)
       ),
       data.frame(stringsAsFactors=FALSE,
                  type=rep('buy',length(depth$bids)),
-                 ldply(depth$bids,unlist)
+                 as.data.frame(depth$bids,stringsAsFactors=FALSE)
       )
     )
-    df <- mutate(df,
-                 price = V1,
-                 volume = V2,
-                 asset = toupper(str_split_fixed(pair,pattern='_',2)[1]),
-                 unit = toupper(str_split_fixed(pair,pattern='_',2)[2])
-    )
+    df$price = df$V1
+    df$volume = df$V2
+    df$asset = toupper(str_split_fixed(pair,pattern='_',2)[1])
+    df$unit = toupper(str_split_fixed(pair,pattern='_',2)[2])
+    df
   })
   orders <- cleandf(orders)
   validateorders(orders)
@@ -143,26 +143,22 @@ getorders_comkort <- function(){
 }
 
 getorders_bitrex <- function(){
-  mkts_raw <- content(GET('https://bittrex.com/api/v1/public/getmarkets '))
+  mkts_raw <- content(GET('https://bittrex.com/api/v1/public/getmarkets'))
   mkts <- ldply(mkts_raw$result,data.frame,stringsAsFactors=FALSE)
-  orders <- ldply(mkts[mkts$IsActive,'MarketName'], function(mkt){
-    url <- modify_url(url='https://bittrex.com/api/v1/public/getorderbook',
-                      query=paste(sep='=',collapse='&',
-                                  c('type','depth','market'),
-                                  c('both','100',mkt)
-                      )
+  urls <- laply(mkts[mkts$IsActive,'MarketName'], function(mktname){
+    modify_url(url='https://bittrex.com/api/v1/public/getorderbook',
+               query=paste(sep='=',collapse='&',
+                           c('type','depth','market'),
+                           c('both','100',mktname)
+               )
     )
-    failures <- 0
-    succ=FALSE
-    while(!succ){
-      Sys.sleep(runif(1,0,2^failures-1))
-      resp <- GET(url)
-      try({succ <- content(resp)$success})
-      failures <- failures+1
-    }
-    depth <- content(resp)$result
-    buyorders <- ldply(depth$buy,data.frame,stringsAsFactors=FALSE)
-    sellorders <- ldply(depth$sell,data.frame,stringsAsFactors=FALSE)
+  })
+  names(urls) <- mkts[mkts$IsActive,'MarketName']
+  orders <- ldply(mkts[mkts$IsActive,'MarketName'], function(mkt){
+    depth <- fromJSON(getURL(urls[mkt]))
+    stopifnot(depth$success)
+    buyorders <- as.data.frame(depth$result$buy)
+    sellorders <- as.data.frame(depth$result$sell)
     buyorders$type <- rep_len('buy',nrow(buyorders))
     sellorders$type <- rep_len('sell',nrow(sellorders))
     mktorders <- rbind_list(buyorders,sellorders)
