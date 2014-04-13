@@ -61,12 +61,17 @@ igraph2orders <- function(graph){
 }
 
 validateorders <- function(orders){
-  by_market <- orders %.% group_by(interaction(asset, unit))
+  by_market <- orders %.% group_by(market = interaction(asset, unit))
   minsells <- by_market %.% filter(type=='sell') %.% summarise(minsell = min(price))
   maxbuys <- by_market %.% filter(type=='buy') %.% summarise(maxbuy = max(price))
-  mktsummary <- inner_join(minsells, maxbuys, by='interaction(asset, unit)') %.% mutate(spread = minsell-maxbuy)
-  if(any(mktsummary$spread < 0)){
+  mktsummary <- inner_join(minsells, maxbuys, by='market') %.% mutate(spread = minsell-maxbuy)
+  if(sum(mktsummary$spread < 0)>2){
     stop('minsell < maxbuy')
+  }else{
+    orders <- orders %.% 
+      mutate(market = interaction(asset, unit)) %.%
+      filter(market %in% mktsummary[mktsummary$spread>=0,'market']) %.%
+      select(-market)
   }
   
   mktsummary <- mktsummary %.% mutate(midprice = rowMeans(cbind(minsell,maxbuy)))
