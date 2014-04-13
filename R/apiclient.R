@@ -234,3 +234,21 @@ getorders_coinse <- function(){
     )
   validateorders(orders)
 }
+
+getorders_ccex <- function(){
+  pairs <- fromJSON(getURL('https://c-cex.com/t/pairs.json'))$pairs
+  ordersresps <- getURL(paste0('https://c-cex.com/t/r.html?key=1822B7C281E6742D0B903E6893CA860F&a=orderlist&pair=', pairs), async=FALSE)
+  names(ordersresps) <-  pairs
+  orders <- ldply(ordersresps, .id = 'market', function(mkt){
+    ldply(fromJSON(mkt, simplifyDataFrame=FALSE)$return, as.data.frame,stringsAsFactors=FALSE)
+  })
+  orders <- cleandf(orders)
+  
+  orders$price <- orders$rate
+  orders$market <- toupper(orders$market)
+  orders$unit <- str_split_fixed(orders$market,pattern='-',2)[,2]
+  orders$asset <- str_split_fixed(orders$market,pattern='-',2)[,1]
+  orders$volume <- orders$amount
+  
+  validateorders(orders)
+}
