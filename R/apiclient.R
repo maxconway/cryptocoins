@@ -98,7 +98,7 @@ cleandf <- function(dataframe){
 }
 
 getorders_cryptsy <- function(){
-  result <- content(GET('http://pubapi.cryptsy.com/api.php?method=orderdatav2'), as='parsed')
+  result <- fromJSON(getURL('http://pubapi.cryptsy.com/api.php?method=orderdatav2'), simplifyVector=FALSE)
   if(result$success!=1){stop('retrieval failed')}
   
   ordersdf <- ldply(result[['return']], with,
@@ -152,7 +152,7 @@ getorders_bter <- function(){
 }
 
 getorders_comkort <- function(){
-  allorders <- content(GET('https://api.comkort.com/v1/public/market/summary'))$markets
+  allorders <- fromJSON(getURL('https://api.comkort.com/v1/public/market/summary'),simplifyVector=FALSE)$markets
   orders <- ldply(allorders, function(x){
     df <- rbind_list(
       data.frame(ldply(x$sell_orders,unlist),stringsAsFactors=FALSE),
