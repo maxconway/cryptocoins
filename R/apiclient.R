@@ -7,6 +7,8 @@ library(lubridate)
 library(stringr)
 library(igraph)
 
+
+
 #' converts from a a data frame of orders to an igraph
 #' 
 #' @param orders dataframe with columns:\describe{
@@ -47,7 +49,7 @@ igraph2orders <- function(graph){
            unit = to,
            price = rate,
            volume = volume
-           ) %.%
+    ) %.%
     select(asset, unit, type, price, volume)
   sells <- orders %.%
     filter(type=='sell') %.%
@@ -98,7 +100,7 @@ cleandf <- function(dataframe){
 }
 
 getorders_cryptsy <- function(){
-  result <- fromJSON(getURL('http://pubapi.cryptsy.com/api.php?method=orderdatav2'), simplifyVector=FALSE)
+  result <- fromJSON(getURL('http://pubapi.cryptsy.com/api.php?method=orderdatav2', ssl.verifyhost = 2), simplifyVector=FALSE)
   if(result$success!=1){stop('retrieval failed')}
   
   ordersdf <- ldply(result[['return']], with,
@@ -124,8 +126,8 @@ getorders_cryptsy <- function(){
 }
 
 getorders_bter <- function(){
-  pairs <- fromJSON(getURL('http://data.bter.com/api/1/pairs'))
-  resps_markets <- getURL(paste0('http://data.bter.com/api/1/depth/',pairs),async=FALSE)
+  pairs <- fromJSON(getURL('https://data.bter.com/api/1/pairs', ssl.verifyhost = 2))
+  resps_markets <- getURL(paste0('https://data.bter.com/api/1/depth/',pairs),async=FALSE, ssl.verifyhost = 2)
   names(resps_markets) <- pairs
   orders <- ldply(pairs, function(pair){
     depth <- fromJSON(resps_markets[[pair]])
@@ -152,7 +154,7 @@ getorders_bter <- function(){
 }
 
 getorders_comkort <- function(){
-  allorders <- fromJSON(getURL('https://api.comkort.com/v1/public/market/summary'),simplifyVector=FALSE)$markets
+  allorders <- fromJSON(getURL('https://api.comkort.com/v1/public/market/summary'),simplifyVector=FALSE, ssl.verifyhost = 2)$markets
   orders <- ldply(allorders, function(x){
     df <- rbind_list(
       data.frame(ldply(x$sell_orders,unlist),stringsAsFactors=FALSE),
@@ -169,7 +171,7 @@ getorders_comkort <- function(){
 }
 
 getorders_bitrex <- function(){
-  mkts_raw <- content(GET('https://bittrex.com/api/v1/public/getmarkets'))
+  mkts_raw <- fromJSON(getURL('https://bittrex.com/api/v1/public/getmarkets', ssl.verifyhost = 2),simplifyVector=FALSE)
   mkts <- ldply(mkts_raw$result,data.frame,stringsAsFactors=FALSE)
   urls <- laply(mkts[mkts$IsActive,'MarketName'], function(mktname){
     modify_url(url='https://bittrex.com/api/v1/public/getorderbook',
@@ -181,7 +183,7 @@ getorders_bitrex <- function(){
   })
   names(urls) <- mkts[mkts$IsActive,'MarketName']
   orders <- ldply(mkts[mkts$IsActive,'MarketName'], function(mkt){
-    depth <- fromJSON(getURL(urls[mkt]))
+    depth <- fromJSON(getURL(urls[mkt], ssl.verifyhost = 2))
     stopifnot(depth$success)
     buyorders <- as.data.frame(depth$result$buy)
     sellorders <- as.data.frame(depth$result$sell)
@@ -201,7 +203,7 @@ getorders_bitrex <- function(){
 }
 
 getorders_coinse <- function(){
-  response <- content(GET("https://www.coins-e.com/api/v2/markets/data/"))
+  response <- fromJSON(getURL("https://www.coins-e.com/api/v2/markets/data/", ssl.verifyhost = 2),simplifyVector=FALSE)
   if(!response$status){
     stop('retrieval failed')
   }
@@ -236,8 +238,8 @@ getorders_coinse <- function(){
 }
 
 getorders_ccex <- function(){
-  pairs <- fromJSON(getURL('https://c-cex.com/t/pairs.json'))$pairs
-  ordersresps <- getURL(paste0('https://c-cex.com/t/r.html?key=1822B7C281E6742D0B903E6893CA860F&a=orderlist&pair=', pairs), async=FALSE)
+  pairs <- fromJSON(getURL('https://c-cex.com/t/pairs.json', ssl.verifyhost = 2))$pairs
+  ordersresps <- getURL(paste0('https://c-cex.com/t/r.html?key=1822B7C281E6742D0B903E6893CA860F&a=orderlist&pair=', pairs), async=FALSE, ssl.verifyhost = 2)
   names(ordersresps) <-  pairs
   orders <- ldply(ordersresps, .id = 'market', function(mkt){
     ldply(fromJSON(mkt, simplifyDataFrame=FALSE)$return, as.data.frame,stringsAsFactors=FALSE)
@@ -250,5 +252,66 @@ getorders_ccex <- function(){
   orders$asset <- str_split_fixed(orders$market,pattern='-',2)[,1]
   orders$volume <- orders$amount
   
+  validateorders(orders)
+}
+
+getorders_vircurex <- function(){
+  # This implementation may double count (due to pulling books twice)
+  supported <- c('ANC',
+                 'AUR',
+                 'BC',
+                 'BTC',
+                 'DGC',
+                 'DOGE',
+                 'DVC',
+                 'FLT',
+                 'FRC',
+                 'FTC',
+                 'I0C',
+                 'IXC',
+                 'LTC',
+                 'NMC',
+                 'NVC',
+                 'NXT',
+                 'PPC',
+                 'QRK',
+                 'TRC',
+                 'VTC',
+                 'WC',
+                 'WDC',
+                 'XPM',
+                 'ZET'
+  )
+  responses <- getURL(paste0('https://api.vircurex.com/api/orderbook_alt.json?alt=',supported))
+  names(responses) <- supported
+  orders <- ldply(names(responses), function(alt){
+    orders_alt <- fromJSON(responses[[alt]])
+    if(orders_alt$status!=0){
+      warning(orders_alt$statustext)
+    }else{
+      orders_alt[c('status','statustext')] <- NULL
+    }
+    ldply(names(orders_alt), function(base){
+      orders_alt_base <- orders_alt[[base]]
+      sell <- data.frame(type = rep_len('sell',length(orders_alt_base$asks)),
+                         as.data.frame(orders_alt_base$asks),
+                         stringsAsFactors=FALSE
+      )
+      buy <- data.frame(type = rep_len('buy',length(orders_alt_base$bids)),
+                         as.data.frame(orders_alt_base$bids),
+                         stringsAsFactors=FALSE
+      )
+      res <- rbind.fill(sell,buy)
+      res$unit <- rep_len(alt,nrow(res))
+      res$asset <- rep_len(base,nrow(res))
+      if(nrow(res)==0){
+        res <- NULL
+      }
+      return(res)
+    })
+  })
+  
+  orders <- cleandf(orders)
+  colnames(orders) <- c('type','price','volume','unit','asset')
   validateorders(orders)
 }

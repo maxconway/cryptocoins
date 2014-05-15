@@ -10,9 +10,10 @@ select_opportunities <- function(graph, start, edgecost){
   solgraph <- delete.vertices(solgraph, setdiff(V(solgraph),subcomponent(solgraph,start,mode='out')))
   solgraph <- delete.vertices(solgraph,which(V(solgraph)$name %in% c('sink','source')))
   solgraph <- augmentgraph(solgraph,start)
-  E(solgraph)$solution <- optimize(solgraph)$solution
+  res <- optimize(solgraph)
+  E(solgraph)$solution <- res$solution
   solgraph <- delete.vertices(solgraph,which(V(solgraph)$name %in% c('sink','source')))
-  return(solgraph)
+  return(list(graph = solgraph, optimum = res$optimum))
 }
 
 #'describe_trades

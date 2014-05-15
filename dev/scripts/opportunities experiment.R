@@ -1,8 +1,12 @@
+source('./R/apiclient.R')
+source('./R/identify-opportunities.R')
+source('./R/execute.R')
+
 # if(file.exists('./dev/logs/ordershistory.RData')){
 #   load('./dev/logs/ordershistory.RData')
 # }
 
-while(TRUE){
+#while(TRUE){
   try({
     pulltime <- now()
     markets <- NULL
@@ -10,11 +14,11 @@ while(TRUE){
     graphs <- list()
     
     try({
-    orders_bter <- getorders_bter() %.% mutate(exchange = 'bter')
-    graph_bter <- orders2igraph(orders_bter,0.2,0.2,exchangename='bter')
-    markets <- c(markets, 'bter')
-    orderslist$bter <- orders_bter
-    graphs$bter <- graph_bter
+      orders_bter <- getorders_bter() %.% mutate(exchange = 'bter')
+      graph_bter <- orders2igraph(orders_bter,0.2,0.2,exchangename='bter')
+      markets <- c(markets, 'bter')
+      orderslist$bter <- orders_bter
+      graphs$bter <- graph_bter
     })
     
     try({
@@ -41,18 +45,34 @@ while(TRUE){
       graphs$bitrex <- graph_bitrex
     })
     
-    try({
-      orders_coinse <- getorders_coinse() %.% mutate(exchange = 'coinse')
-      graph_coinse <- orders2igraph(orders_coinse,0.2,0.2,exchangename='coinse')
-      markets <- c(markets, 'coinse')
-      orderslist$coinse <- orders_coinse
-      graphs$coinse <- graph_coinse
-    })
+     try({
+       orders_coinse <- getorders_coinse() %.% mutate(exchange = 'coinse')
+       graph_coinse <- orders2igraph(orders_coinse,0.2,0.2,exchangename='coinse')
+       markets <- c(markets, 'coinse')
+       orderslist$coinse <- orders_coinse
+       graphs$coinse <- graph_coinse
+     })
+    
+     try({
+       orders_ccex <- getorders_ccex() %.% mutate(exchange = 'ccex')
+       graph_ccex <- orders2igraph(orders_ccex,0.2,0.2,exchangename='ccex')
+       markets <- c(markets, 'ccex')
+       orderslist$ccex <- orders_ccex
+       graphs$ccex <- graph_ccex
+     })
+    
+#     try({
+#       orders_vircurex <- getorders_vircurex() %.% mutate(exchange = 'vircurex')
+#       graph_vircurex <- orders2igraph(orders_vircurex,0.2,0.2,exchangename='vircurex')
+#       markets <- c(markets, 'vircurex')
+#       orderslist$vircurex <- orders_vircurex
+#       graphs$vircurex <- graph_vircurex
+#     })
     
     gr2 <- graph.disjoint.union(graphs)
     
     gr2 <- gr2 + vertices(c('BTC_wallet','LTC_wallet','DOGE_wallet'))
-        
+    
     for(currency in c('BTC','LTC','DOGE')){
       gr2[from=rep_len(paste(sep='_',currency,'wallet'), length(markets)), to=paste(sep='_', currency, markets), attr='rate'] <- 1
       gr2[from=rep_len(paste(sep='_',currency,'wallet'), length(markets)), to=paste(sep='_', currency, markets), attr='volume'] <- Inf
@@ -60,15 +80,22 @@ while(TRUE){
       gr2[to=rep_len(paste(sep='_',currency,'wallet'), length(markets)), from=paste(sep='_', currency, markets), attr='volume'] <- Inf
     }
     
-    res <- optimize(augmentgraph(gr2,vertex='BTC_wallet'))
-    if(res$optimum>1){
+    res0 <- select_opportunities(gr2,'BTC_wallet',0)
+    res1 <- select_opportunities(gr2,'BTC_wallet',1)
+
+    print(res1$optimum)
+    if(res1$optimum>0.05){
       sendmail('conway.max1@gmail.com',
                subject=paste('Arbitrage opportunity for',format(res$optimum,digits=3),'BTC'),
                message=paste("Hi Max, you have found an arbitrage opportunity for",format(res$optimum,digits=3),'BTC.')
       )
     }
     
-    write.table(data.frame(pulltime,res$optimum),
+    tolog <- data.frame(pulltime = pulltime, 
+                        res0 = res0$optimum,
+                        res1 = res1$optimum)
+
+    write.table(tolog,
                 file='./dev/logs/opportunities.txt',
                 append=TRUE,
                 col.names=FALSE,
@@ -76,21 +103,21 @@ while(TRUE){
                 sep='\t'
     )
     
-    currentorders <- orderslist %.% ldply(select, exchange, asset, unit, type, price, volume) %.% 
-      mutate(pulled = pulltime)
+#     currentorders <- orderslist %.% ldply(select, exchange, asset, unit, type, price, volume) %.% 
+#       mutate(pulled = pulltime)
     
-#     if(exists('historicalorders')){
-#       historicalorders <- rbind.fill(historicalorders, currentorders)
-#     }else{
-#       historicalorders <- currentorders
-#     }
-#     
-#     try({
-#     save(historicalorders, file='./dev/logs/ordershistory_temp.RData')
-#     file.rename('./dev/logs/ordershistory_temp.RData',
-#                 './dev/logs/ordershistory.RData')
-#     })
-    gc()
+    #     if(exists('historicalorders')){
+    #       historicalorders <- rbind.fill(historicalorders, currentorders)
+    #     }else{
+    #       historicalorders <- currentorders
+    #     }
+    #     
+    #     try({
+    #     save(historicalorders, file='./dev/logs/ordershistory_temp.RData')
+    #     file.rename('./dev/logs/ordershistory_temp.RData',
+    #                 './dev/logs/ordershistory.RData')
+    #     })
+#    max(as.double(pulltime + dminutes(0.5) - now(),units='secs'), 0)
   })
-}
+#}
 

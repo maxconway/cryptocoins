@@ -24,7 +24,7 @@ test_that('orders2igraph: fees work correctly', {
 })
 
 test_that('igraph2orders reverses orders2igraph', {
-  load(file='tests/testthat/exampleorders.RData')
+  load(file='~/git/bitcoin/tests/testdata/exampleorders.RData')
   expected <- testorders
   expected <- expected[order(expected$unit,expected$asset,expected$type,expected$price,expected$volume),c('asset','unit','type','price','volume')]
   sample <- igraph2orders(orders2igraph(testorders))
@@ -69,7 +69,7 @@ test_that('validation: inverted types', {
 
 test_that('validation: main values in correct ratio', {
   orders_wrong <- orders_realistic
-  orders_wrong[3,'price'] <- 2
+  orders_wrong[c(2,3,4,5),'price'] <- c(0.00534930,0.00000102,0.00000101,0.00004052)
   
   expect_that(validateorders(orders_wrong), throws_error())
 })
