@@ -103,8 +103,14 @@ source('./R/execute.R')
                 sep='\t'
     )
     
-#     currentorders <- orderslist %.% ldply(select, exchange, asset, unit, type, price, volume) %.% 
-#       mutate(pulled = pulltime)
+     currentorders <- orderslist %.% ldply(select, exchange, asset, unit, type, price, volume) %.% 
+       mutate(pulled = pulltime)
+
+    try({
+    save(currentorders, file='./dev/logs/currentorders_temp.RData')
+    file.rename('./dev/logs/currentorders_temp.RData',
+                './dev/logs/currentorders.RData')
+    })
     
     #     if(exists('historicalorders')){
     #       historicalorders <- rbind.fill(historicalorders, currentorders)
