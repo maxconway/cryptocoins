@@ -1,4 +1,6 @@
 .Rproj.user
 .Rhistory
 .RData
-trades.csv?symbol=mtgoxUSD
+dev/data/
+dev/logs/
+dev/temp/
