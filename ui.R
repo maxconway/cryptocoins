@@ -5,7 +5,8 @@ shinyUI(fluidPage(
   sidebarLayout(
     sidebarPanel(h3("Select Currencies"),
                  uiOutput('assetselection'),
-                 uiOutput('unitselection')
+                 uiOutput('unitselection'),
+                 uiOutput('exchangeselection')
                  ),
     mainPanel(
       tabsetPanel(type = 'tabs',

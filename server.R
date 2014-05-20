@@ -14,6 +14,7 @@ shinyServer(function(input, output) {
   
   asset_currencies <- reactive({unique(currentorders()$asset)})
   unit_currencies <- reactive({unique(currentorders()$unit)})
+  exchanges <- reactive({unique(currentorders()$exchange)})
   
   output$assetselection <- renderUI({
     selectInput(inputId = 'currencies',
@@ -32,9 +33,17 @@ shinyServer(function(input, output) {
     )
   })
   
+  output$exchangeselection <- renderUI({
+    checkboxGroupInput(inputId = 'exchanges',
+                       label = 'Exchanges',
+                       choices = sort(exchanges()),
+                       selected = exchanges()
+    )
+  })
+  
   ordertable <- reactive({
     currentorders() %.% 
-      filter(asset %in% input$currencies & unit == input$base) %.%
+      filter(asset %in% input$currencies & unit == input$base & exchange %in% input$exchanges) %.%
       select(exchange, asset, unit, type, price, volume) %.%
       arrange(price)
   })
