@@ -10,6 +10,10 @@ shinyUI(fluidPage(
                  ),
     mainPanel(
       tabsetPanel(type = 'tabs',
+        tabPanel('Summary', 
+                 htmlOutput('bestbuy'),
+                 htmlOutput('bestsell')
+                 ),
         tabPanel('Plot', plotOutput('plot')),
         tabPanel('Table', dataTableOutput(outputId = 'table'))
       )

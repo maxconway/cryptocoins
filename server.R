@@ -1,7 +1,20 @@
 # Server
 
+# imports
 library(dplyr)
 library(ggplot2)
+
+# Static
+get_exchange_address <- function(exchange, asset, unit){
+  switch(exchange,
+         bitrex = 'https://bittrex.com/',
+         bter = 'https://bter.com/',
+         ccex = 'https://c-cex.com/',
+         coinse = 'https://www.coins-e.com/',
+         comkort = 'https://comkort.com/',
+         cryptsy = 'https://www.cryptsy.com/'
+  )
+}
 
 shinyServer(function(input, output) {
   
@@ -74,5 +87,24 @@ shinyServer(function(input, output) {
         coord_cartesian(xlim = c(0.9*min(maxbuys,minsells), 1.1*max(maxbuys, minsells))) +
         scale_y_log10()
     )
+  })
+  
+  output$bestbuy <- renderText({
+    bestbuy <- ordertable() %.%
+      filter(type == 'sell') %.% 
+      filter(price == min(price))
+    
+    paste0('Best place to buy: ', a(href = get_exchange_address(bestbuy$exchange), bestbuy$exchange), 
+           ' at ', signif(bestbuy$price), ' ', bestbuy$unit, '/', bestbuy$asset)
+    
+  })
+  
+  output$bestsell <- renderText({
+    bestsell <- ordertable() %.%
+      filter(type == 'buy') %.% 
+      filter(price == max(price))
+    
+    paste0('Best place to sell: ', a(href = get_exchange_address(bestsell$exchange), bestsell$exchange), 
+           ' at ', signif(bestsell$price), ' ', bestsell$unit, '/', bestsell$asset)
   })
 })
