@@ -7,8 +7,11 @@ shinyUI(fluidPage(
                  uiOutput('assetselection'),
                  uiOutput('unitselection')
                  ),
-    mainPanel(h3("Data"),
-              plotOutput('plot'),
-              dataTableOutput(outputId = 'table'))
+    mainPanel(
+      tabsetPanel(type = 'tabs',
+        tabPanel('Plot', plotOutput('plot')),
+        tabPanel('Table', dataTableOutput(outputId = 'table'))
+      )
+    )
   )
 ))
