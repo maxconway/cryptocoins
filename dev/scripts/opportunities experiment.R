@@ -107,9 +107,9 @@ source('./R/execute.R')
        mutate(pulled = pulltime)
 
     try({
-    save(currentorders, file='./dev/logs/currentorders_temp.RData')
-    file.rename('./dev/logs/currentorders_temp.RData',
-                './dev/logs/currentorders.RData')
+    saveRDS(currentorders, file='./dev/logs/currentorders_temp.rds')
+    file.rename('./dev/logs/currentorders_temp.rds',
+                './dev/logs/currentorders.rds')
     })
     
     #     if(exists('historicalorders')){

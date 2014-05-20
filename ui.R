@@ -1,20 +1,13 @@
 # UI
 shinyUI(fluidPage(
-  titlePanel("title panel"),
+  titlePanel("Cryptocurrency Explorer"),
   
   sidebarLayout(
-    sidebarPanel("sidebar panel",
-                 selectInput(inputId = 'currencies',
-                             label = 'Currencies',
-                             choices = currencies,
-                             multiple=TRUE
+    sidebarPanel(h3("Select Currencies"),
+                 uiOutput('assetselection'),
+                 uiOutput('unitselection')
                  ),
-                 selectInput(inputId = 'base',
-                             label = 'Base',
-                             choices = currencies,
-                             selected='BTC'
-                 )),
-    mainPanel("main panel",
+    mainPanel(h3("Data"),
               plotOutput('plot'),
               dataTableOutput(outputId = 'table'))
   )
