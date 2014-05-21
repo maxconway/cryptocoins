@@ -89,22 +89,25 @@ shinyServer(function(input, output) {
     )
   })
   
-  output$bestbuy <- renderText({
+  output$bestbuys <- renderDataTable({
     bestbuy <- ordertable() %.%
-      filter(type == 'sell') %.% 
-      filter(price == min(price))
-    
-    paste0('Best place to buy: ', a(href = get_exchange_address(bestbuy$exchange), bestbuy$exchange), 
-           ' at ', signif(bestbuy$price), ' ', bestbuy$unit, '/', bestbuy$asset)
-    
+      filter(type == 'sell') %.%
+      group_by(asset, exchange) %.%
+      mutate(exchangebest = price == min(price)) %.% 
+      group_by(asset,add=FALSE) %.%
+      filter(exchangebest | (price %in% sort(price, decreasing = FALSE)[1:10])) %.%
+      arrange(asset, price) %.% 
+      select(exchange, asset, unit, price, volume)
   })
   
-  output$bestsell <- renderText({
-    bestsell <- ordertable() %.%
-      filter(type == 'buy') %.% 
-      filter(price == max(price))
-    
-    paste0('Best place to sell: ', a(href = get_exchange_address(bestsell$exchange), bestsell$exchange), 
-           ' at ', signif(bestsell$price), ' ', bestsell$unit, '/', bestsell$asset)
+  output$bestsellss <- renderDataTable({
+    bestbuy <- ordertable() %.%
+      filter(type == 'buy') %.%
+      group_by(asset, exchange) %.%
+      mutate(exchangebest = price == max(price)) %.% 
+      group_by(asset,add=FALSE) %.%
+      filter(exchangebest | (price %in% sort(price, decreasing = FALSE)[1:10])) %.%
+      arrange(asset, price) %.% 
+      select(exchange, asset, unit, price, volume)
   })
 })

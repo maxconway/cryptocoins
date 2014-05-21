@@ -11,8 +11,8 @@ shinyUI(fluidPage(
     mainPanel(
       tabsetPanel(type = 'tabs',
         tabPanel('Summary', 
-                 htmlOutput('bestbuy'),
-                 htmlOutput('bestsell')
+                 dataTableOutput('bestbuys'),
+                 dataTableOutput('bestsells')
                  ),
         tabPanel('Plot', plotOutput('plot')),
         tabPanel('Table', dataTableOutput(outputId = 'table'))
